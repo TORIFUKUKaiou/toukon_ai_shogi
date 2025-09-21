@@ -24,6 +24,10 @@ ToukonAiShogi.Game               # コンテキスト。初期化やステート
 - `request_log`: `list`（"リクエスト" イベントの履歴）
 - `metadata`: `map`（UI 向け補助情報。例: 直前の手、成り選択中フラグ）
 
+### metadata の暫定フィールド
+- `selected_piece`: LiveView UI がハイライト中の駒 ID
+- `pending_move`: `%{from: {file, rank}, to: {file, rank}}` 形式で未適用の移動要求を保持
+
 ## Board 構造体
 - `squares`: `%{{file, rank} => Piece.t()}`
 - ヘルパー
@@ -57,4 +61,3 @@ ToukonAiShogi.Game               # コンテキスト。初期化やステート
 - 棋譜保存は `move_log` を CSA など既存フォーマットに変換するモジュールを追加する。
 - 合法手チェックは別モジュール化し、縁台ルール用フラグで OFF/ON を切り替え。
 - AI 対戦時は `ToukonAiShogi.Game` に Bot 用インターフェースを追加予定。
-
