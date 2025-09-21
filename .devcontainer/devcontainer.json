@@ -1,0 +1,61 @@
+
+{
+	"name": "Elixir, Phoenix, PostgresSQL (Community)",
+	"dockerComposeFile": "docker-compose.yml",
+	"service": "elixir",
+	"workspaceFolder": "/workspace",
+	"postAttachCommand": "cd /workspace && pwd",
+
+	// Configure tool-specific properties.
+	"customizations": {
+		// Configure properties specific to VS Code.
+		"vscode": {
+			"settings": {
+				"elixirLS.suggestSpecs": false,
+				"elixirLS.dialyzerEnabled": true,
+				"elixirLS.signatureAfterComplete": false,
+				"elixirLS.fetchDeps": false,
+
+				"files.associations": {
+				  "*.heex": "phoenix-heex"
+				},
+
+				"[elixir]": {
+				  "editor.formatOnSave": true,
+				  "editor.defaultFormatter": "JakeBecker.elixir-ls"
+				},
+
+				"[phoenix-heex]": {
+				  "editor.formatOnSave": true,
+				  "editor.defaultFormatter": "JakeBecker.elixir-ls"
+				},
+
+				"emmet.includeLanguages": {
+				  "elixir": "html",
+				  "phoenix-heex": "html"
+				},
+				"emmet.triggerExpansionOnTab": true
+			},
+			// Add the IDs of extensions you want installed when the container is created.
+			"extensions": [
+				"JakeBecker.elixir-ls",
+				"ms-azuretools.vscode-docker",
+				"florinpatrascu.vscode-elixir-snippets",
+				"phoenixframework.phoenix",
+				"moshfeu.compare-folders",
+				"vortizhe.simple-ruby-erb",
+				"t3dotgg.vsc-material-theme-but-i-wont-sue-you"
+			]
+		}
+	},
+
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	// This can be used to network with other containers or with the host. 
+	"forwardPorts": [4000, 4001, 5432],
+
+	// Use 'postCreateCommand' to run commands after the container is created.
+	// "postCreateCommand": "mix deps.get"
+
+	// Uncomment to connect as a non-root user. See https://aka.ms/vscode-remote/containers/non-root.
+	"remoteUser": "vscode"
+}
