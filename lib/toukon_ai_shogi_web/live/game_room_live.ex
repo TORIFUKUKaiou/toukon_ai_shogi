@@ -400,24 +400,41 @@ defmodule ToukonAiShogiWeb.GameRoomLive do
               </p>
             <% end %>
 
-            <div class="flex w-full flex-col items-center gap-4 md:flex-row md:items-start">
-              <BoardComponents.board
-                board={@game_state.board}
-                selected_square={@selected_square}
-                disabled={moves_blocked?(@promotion_prompt, @game_state)}
-                perspective={board_perspective(@role)}
-              />
+            <% player_role = player_role(@role) %>
+            <% opponent_role = opponent_role(player_role) %>
 
-              <div class="flex w-full max-w-[200px] flex-col gap-4 md:items-stretch">
-                <%= for owner <- hand_render_order(@role) do %>
+            <div class="flex w-full flex-col items-center gap-6">
+              <div class="flex w-full justify-start">
+                <div class="max-w-[220px]">
                   <BoardComponents.hand
-                    owner={owner}
-                    pieces={Map.get(@game_state.captures, owner, [])}
+                    owner={opponent_role}
+                    pieces={Map.get(@game_state.captures, opponent_role, [])}
                     perspective={board_perspective(@role)}
-                    selected_piece_id={selected_hand_piece_id(@selected_hand_piece, owner)}
-                    disabled={hand_disabled?(@role, owner, @promotion_prompt, @game_state)}
+                    selected_piece_id={selected_hand_piece_id(@selected_hand_piece, opponent_role)}
+                    disabled={hand_disabled?(@role, opponent_role, @promotion_prompt, @game_state)}
                   />
-                <% end %>
+                </div>
+              </div>
+
+              <div class="flex justify-center">
+                <BoardComponents.board
+                  board={@game_state.board}
+                  selected_square={@selected_square}
+                  disabled={moves_blocked?(@promotion_prompt, @game_state)}
+                  perspective={board_perspective(@role)}
+                />
+              </div>
+
+              <div class="flex w-full justify-end">
+                <div class="max-w-[220px]">
+                  <BoardComponents.hand
+                    owner={player_role}
+                    pieces={Map.get(@game_state.captures, player_role, [])}
+                    perspective={board_perspective(@role)}
+                    selected_piece_id={selected_hand_piece_id(@selected_hand_piece, player_role)}
+                    disabled={hand_disabled?(@role, player_role, @promotion_prompt, @game_state)}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -466,7 +483,7 @@ defmodule ToukonAiShogiWeb.GameRoomLive do
             <div>
               <h3 class="text-sm font-semibold text-slate-200">選択中の駒</h3>
               <p class="mt-1 text-sm text-slate-300">
-                <%= selected_item_label(@selected_square, @selected_hand_piece) %>
+                {selected_item_label(@selected_square, @selected_hand_piece)}
               </p>
             </div>
 
@@ -530,8 +547,12 @@ defmodule ToukonAiShogiWeb.GameRoomLive do
   defp role_label(:gote), do: "後手"
   defp role_label(_), do: "観戦"
 
-  defp hand_render_order(:gote), do: [:gote, :sente]
-  defp hand_render_order(_), do: [:sente, :gote]
+  defp player_role(nil), do: :sente
+  defp player_role(role), do: role
+
+  defp opponent_role(:sente), do: :gote
+  defp opponent_role(:gote), do: :sente
+  defp opponent_role(_), do: :gote
 
   defp hand_disabled?(role, owner, promotion_prompt, %State{metadata: metadata, turn: turn}) do
     role != owner or not is_nil(promotion_prompt) or not is_nil(metadata[:result]) or
