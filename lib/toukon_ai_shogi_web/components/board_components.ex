@@ -28,17 +28,19 @@ defmodule ToukonAiShogiWeb.BoardComponents do
   attr :board, Board, required: true
   attr :selected_square, :any, default: nil
   attr :disabled, :boolean, default: false
+  attr :perspective, :atom, default: :sente
 
   def board(assigns) do
     ~H"""
     <div class="flex flex-col gap-2">
       <div class="grid grid-cols-9 gap-[2px] bg-amber-800 p-[2px] shadow-lg">
-        <%= for rank <- 9..1//-1, file <- 1..9 do %>
+        <%= for rank <- rank_sequence(@perspective), file <- file_sequence(@perspective) do %>
           <.board_square
             coordinate={{file, rank}}
             piece={Map.get(@board.squares, {file, rank})}
             selected_square={@selected_square}
             disabled={@disabled}
+            perspective={@perspective}
           />
         <% end %>
       </div>
@@ -53,6 +55,7 @@ defmodule ToukonAiShogiWeb.BoardComponents do
   attr :piece, Piece, default: nil
   attr :selected_square, :any, default: nil
   attr :disabled, :boolean, default: false
+  attr :perspective, :atom, default: :sente
 
   defp board_square(assigns) do
     assigns = assign(assigns, :selected?, assigns[:selected_square] == assigns.coordinate)
@@ -69,13 +72,14 @@ defmodule ToukonAiShogiWeb.BoardComponents do
       disabled={@disabled}
     >
       <%= if @piece do %>
-        <.board_piece piece={@piece} />
+        <.board_piece piece={@piece} perspective={@perspective} />
       <% end %>
     </button>
     """
   end
 
   attr :piece, Piece, required: true
+  attr :perspective, :atom, default: :sente
 
   defp board_piece(assigns) do
     assigns = assign(assigns, :asset_path, piece_asset(assigns.piece))
@@ -86,7 +90,7 @@ defmodule ToukonAiShogiWeb.BoardComponents do
       alt={piece_label(@piece)}
       class={[
         "mx-auto h-14 w-11 select-none drop-shadow",
-        if(@piece.owner == :gote, do: "rotate-180", else: nil)
+        piece_rotation_class(@piece, @perspective)
       ]}
       draggable="false"
     />
@@ -122,4 +126,18 @@ defmodule ToukonAiShogiWeb.BoardComponents do
   defp piece_name(:narikyo), do: "成香"
   defp piece_name(:fu), do: "歩兵"
   defp piece_name(:tokin), do: "と金"
+
+  defp rank_sequence(:gote), do: 1..9
+  defp rank_sequence(_), do: 9..1//-1
+
+  defp file_sequence(:gote), do: 9..1//-1
+  defp file_sequence(_), do: 1..9
+
+  defp piece_rotation_class(%Piece{owner: owner}, perspective) do
+    cond do
+      perspective == :sente and owner == :gote -> "rotate-180"
+      perspective == :gote and owner == :sente -> "rotate-180"
+      true -> nil
+    end
+  end
 end

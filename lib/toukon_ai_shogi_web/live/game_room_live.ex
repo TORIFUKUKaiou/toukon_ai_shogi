@@ -280,6 +280,7 @@ defmodule ToukonAiShogiWeb.GameRoomLive do
               board={@game_state.board}
               selected_square={@selected_square}
               disabled={moves_blocked?(@promotion_prompt, @game_state)}
+              perspective={board_perspective(@role)}
             />
           </div>
 
@@ -382,6 +383,9 @@ defmodule ToukonAiShogiWeb.GameRoomLive do
   defp role_label(:sente), do: "先手"
   defp role_label(:gote), do: "後手"
   defp role_label(_), do: "観戦"
+
+  defp board_perspective(:gote), do: :gote
+  defp board_perspective(_), do: :sente
 
   defp move_text(%{from: {from_file, from_rank}, to: {to_file, to_rank}}) do
     "#{from_file}筋#{from_rank}段 → #{to_file}筋#{to_rank}段"
