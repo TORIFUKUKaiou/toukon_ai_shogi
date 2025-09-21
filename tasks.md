@@ -10,11 +10,11 @@
 - [x] GitHub Actions など CI 用ワークフローの雛形追加（`mix format --check-formatted` と `mix test`）
 
 ## フェーズ2: ドメイン設計と基盤
-- [ ] 将棋盤・駒・手番・対局状態を表すドメインモデルの設計メモ作成
-- [ ] `ToukonAiShogi.Game` コンテキスト作成（局面管理、合法手検証は後回し）
-- [ ] 駒画像 `koma-assets/` を Phoenix の静的ファイル（`priv/static/images/`）へ配置・参照設定
-- [ ] 初期盤面を JSON/構造体で保持するモジュールの実装
-- [ ] 「リクエスト」判定のフロー仕様を文書化（後続実装の基準）
+- [x] 将棋盤・駒・手番・対局状態を表すドメインモデルの設計メモ作成
+- [x] `ToukonAiShogi.Game` コンテキスト作成（局面管理、合法手検証は後回し）
+- [x] 駒画像を Phoenix の静的ファイル（`priv/static/images/koma/`）へ配置・参照設定
+- [x] 初期盤面を JSON/構造体で保持するモジュールの実装
+- [x] 「リクエスト」判定のフロー仕様を文書化（後続実装の基準）
 
 ## フェーズ3: LiveView UI 基盤
 - [ ] `ToukonAiShogiWeb.BoardLive` の雛形実装（マウント時に初期盤面を描画）

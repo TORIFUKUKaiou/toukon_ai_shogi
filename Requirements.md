@@ -52,9 +52,7 @@ AI = Antonio Inokiです。
 
 ## 駒の画像
 
-駒の画像を下記に格納しておく。  
-
-koma-assets/
+駒の画像は Phoenix の静的ディレクトリ `priv/static/images/koma/` に格納する。
 
 - syougi02_gyokusyou.png : 玉将
 - syougi03_hisya.png : 飛車
