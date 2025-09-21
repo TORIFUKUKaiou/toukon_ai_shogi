@@ -3,11 +3,11 @@
 ※ フェーズ1〜6が対人対戦MVPの完成ライン、フェーズ7以降はポストMVP拡張。
 
 ## フェーズ1: プロジェクト初期設定
-- [ ] Phoenix + LiveView プロジェクトの新規作成 (`mix phx.new toukon_ai_shogi --live`)
-- [ ] `.formatter.exs` と `mix.exs` の設定調整（Elixir バージョン、依存関係の確認）
-- [ ] `mix phx.gen.secret` で生成したシークレットの環境変数化
-- [ ] 開発用 `config/dev.exs` に LiveView デバッグ/コードリロード設定を追記
-- [ ] GitHub Actions など CI 用ワークフローの雛形追加（`mix format --check-formatted` と `mix test`）
+- [x] Phoenix + LiveView プロジェクトの新規作成 (`mix phx.new .`)
+- [x] `.formatter.exs` と `mix.exs` の設定調整（Elixir バージョン、依存関係の確認）
+- [x] `mix phx.gen.secret` で生成したシークレットの環境変数化
+- [x] 開発用 `config/dev.exs` に LiveView デバッグ/コードリロード設定を追記
+- [x] GitHub Actions など CI 用ワークフローの雛形追加（`mix format --check-formatted` と `mix test`）
 
 ## フェーズ2: ドメイン設計と基盤
 - [ ] 将棋盤・駒・手番・対局状態を表すドメインモデルの設計メモ作成
