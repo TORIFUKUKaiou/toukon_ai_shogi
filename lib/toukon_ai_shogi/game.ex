@@ -64,7 +64,7 @@ defmodule ToukonAiShogi.Game do
     promote? = Keyword.get(opts, :promote, false)
 
     with {:ok, %Piece{} = piece, board_without_piece} <- Board.take(state.board, from),
-         true <- piece.owner == state.turn do
+         :ok <- ensure_turn(state, piece.owner) do
       {captured_piece, board_cleared_target} = Board.drop(board_without_piece, to)
 
       moved_piece = maybe_promote(piece, promote?)
@@ -72,27 +72,34 @@ defmodule ToukonAiShogi.Game do
       updated_captures = maybe_capture(state.captures, captured_piece, piece.owner)
       move_entry = build_move_entry(move, promote?, captured_piece)
 
-      new_state =
-        %State{
-          state
-          | board: updated_board,
-            captures: updated_captures,
-            move_log: state.move_log ++ [move_entry],
-            metadata:
-              state.metadata
-              |> Map.put(:selected_piece, nil)
-              |> Map.put(:pending_move, nil)
-              |> Map.put(:promotion_choice, nil)
-              |> Map.put(:last_move, move_entry),
-            turn: opponent(piece.owner)
-        }
-
-      {:ok, new_state}
+      {:ok, finalize_move(state, updated_board, updated_captures, move_entry, opponent(piece.owner))}
     else
       {:error, :empty} -> {:error, :no_piece}
-      false -> {:error, :not_players_turn}
+      {:error, :not_players_turn} = error -> error
     end
   end
+
+  @doc """
+  持ち駒を盤上へ打つ。縁台ルールに合わせて配置先の合法性チェックは行わないが、既に駒があるマスには打てない。
+  """
+  @spec drop_piece(State.t(), :sente | :gote, String.t(), coordinate()) ::
+          {:ok, State.t()} | {:error, :not_players_turn | :occupied_square | :piece_not_in_hand}
+  def drop_piece(%State{} = state, owner, piece_id, to) when owner in [:sente, :gote] do
+    with :ok <- ensure_turn(state, owner),
+         :ok <- ensure_empty(state.board, to),
+         {:ok, %Piece{} = piece, captures_without_piece} <- pop_capture_piece(state.captures, owner, piece_id) do
+      updated_board = Board.put(state.board, to, piece)
+      updated_captures = Map.put(state.captures, owner, captures_without_piece)
+      move_entry = build_drop_entry(piece, to)
+
+      {:ok, finalize_move(state, updated_board, updated_captures, move_entry, opponent(owner))}
+    else
+      {:error, :not_players_turn} = error -> error
+      {:error, :occupied_square} = error -> error
+      {:error, :piece_not_in_hand} = error -> error
+    end
+  end
+
 
   @doc """
   対局結果を記録する。
@@ -206,6 +213,41 @@ defmodule ToukonAiShogi.Game do
 
   defp serialize_coordinate(other), do: other
 
+  defp finalize_move(state, updated_board, updated_captures, move_entry, next_turn) do
+    %State{
+      state
+      | board: updated_board,
+        captures: updated_captures,
+        move_log: state.move_log ++ [move_entry],
+        metadata:
+          state.metadata
+          |> Map.put(:selected_piece, nil)
+          |> Map.put(:pending_move, nil)
+          |> Map.put(:promotion_choice, nil)
+          |> Map.put(:last_move, move_entry),
+        turn: next_turn
+    }
+  end
+
+  defp ensure_turn(%State{turn: turn}, owner) when turn == owner, do: :ok
+  defp ensure_turn(_state, _owner), do: {:error, :not_players_turn}
+
+  defp ensure_empty(board, coordinate) do
+    case Board.fetch(board, coordinate) do
+      :error -> :ok
+      {:ok, _} -> {:error, :occupied_square}
+    end
+  end
+
+  defp pop_capture_piece(captures, owner, piece_id) do
+    pieces = Map.fetch!(captures, owner)
+
+    case Enum.split_with(pieces, &(&1.id != piece_id)) do
+      {kept, [%Piece{} = piece | rest]} -> {:ok, piece, kept ++ rest}
+      _ -> {:error, :piece_not_in_hand}
+    end
+  end
+
   defp maybe_promote(%Piece{} = piece, true) do
     if promotable_type?(piece.type) do
       %{piece | promoted: true, type: promote_type(piece.type)}
@@ -233,6 +275,7 @@ defmodule ToukonAiShogi.Game do
 
   defp build_move_entry(%{from: from, to: to}, promote?, captured_piece) do
     %{
+      action: :move,
       from: from,
       to: to,
       promote: promote?,
@@ -241,6 +284,16 @@ defmodule ToukonAiShogi.Game do
           nil -> nil
           %Piece{} = piece -> %{type: piece.type, owner: piece.owner, promoted: piece.promoted}
         end
+    }
+  end
+
+  defp build_drop_entry(%Piece{} = piece, to) do
+    %{
+      action: :drop,
+      from: %{hand: true, owner: piece.owner, piece_id: piece.id, type: piece.type},
+      to: to,
+      promote: false,
+      captured: nil
     }
   end
 

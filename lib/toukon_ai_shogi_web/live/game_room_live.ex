@@ -17,6 +17,7 @@ defmodule ToukonAiShogiWeb.GameRoomLive do
       |> assign(:room_id, room_id)
       |> assign(:user, user)
       |> assign(:selected_square, nil)
+      |> assign(:selected_hand_piece, nil)
       |> assign(:promotion_prompt, nil)
       |> assign(:request_modal, nil)
       |> assign(:last_event, nil)
@@ -57,29 +58,52 @@ defmodule ToukonAiShogiWeb.GameRoomLive do
     if moves_blocked?(socket) do
       {:noreply, socket}
     else
-      {file, rank} = parse_coordinates(file, rank)
-      board = socket.assigns.game_state.board
+      coordinate = parse_coordinates(file, rank)
 
-      case {socket.assigns.selected_square, Board.fetch(board, {file, rank})} do
-        {nil, {:ok, %Piece{} = piece}} ->
-          if owns_piece?(socket, piece) do
-            {:noreply,
-             socket
-             |> assign(selected_square: {file, rank})
-             |> assign(last_event: {:pick, {file, rank}})}
-          else
-            {:noreply, assign(socket, last_event: {:not_your_piece, {file, rank}})}
-          end
+      case socket.assigns.selected_hand_piece do
+        nil ->
+          handle_board_square_click(socket, coordinate)
 
-        {nil, :error} ->
-          {:noreply, assign(socket, last_event: {:empty_square, {file, rank}})}
-
-        {{^file, ^rank}, _} ->
-          {:noreply, assign(socket, selected_square: nil, last_event: :cancel_selection)}
-
-        {selected, _} when is_tuple(selected) ->
-          handle_move(socket, selected, {file, rank})
+        selected_hand ->
+          handle_hand_drop(socket, selected_hand, coordinate)
       end
+    end
+  end
+
+  def handle_event("hand_piece_clicked", %{"piece_id" => piece_id}, socket) do
+    cond do
+      moves_blocked?(socket) ->
+        {:noreply, socket}
+
+      true ->
+        case find_hand_piece(socket.assigns.game_state.captures, piece_id) do
+          {:ok, owner, %Piece{} = piece} ->
+            cond do
+              socket.assigns.role != owner ->
+                {:noreply, assign(socket, last_event: {:hand_not_yours, piece_id})}
+
+              socket.assigns.game_state.turn != owner ->
+                {:noreply, assign(socket, last_event: {:hand_error, :not_players_turn})}
+
+              socket.assigns.selected_hand_piece && socket.assigns.selected_hand_piece.id == piece.id ->
+                {:noreply,
+                 socket
+                 |> assign(selected_hand_piece: nil)
+                 |> assign(last_event: :cancel_hand_selection)}
+
+              true ->
+                selected = %{id: piece.id, type: piece.type, owner: owner}
+
+                {:noreply,
+                 socket
+                 |> assign(selected_hand_piece: selected)
+                 |> assign(selected_square: nil)
+                 |> assign(last_event: {:hand_pick, selected})}
+            end
+
+          :error ->
+            {:noreply, assign(socket, last_event: {:hand_error, :not_found})}
+        end
     end
   end
 
@@ -93,12 +117,14 @@ defmodule ToukonAiShogiWeb.GameRoomLive do
         {:noreply,
          socket
          |> assign(promotion_prompt: nil, selected_square: nil)
+         |> assign(selected_hand_piece: nil)
          |> assign(last_event: {:move_applied, Map.put(move, :promote, promote?)})}
 
       {:error, reason} ->
         {:noreply,
          socket
          |> assign(promotion_prompt: nil)
+         |> assign(selected_hand_piece: nil)
          |> assign(last_event: {:move_error, reason})}
     end
   end
@@ -135,7 +161,7 @@ defmodule ToukonAiShogiWeb.GameRoomLive do
   end
 
   def handle_event("cancel", _params, socket) do
-    {:noreply, assign(socket, selected_square: nil, promotion_prompt: nil)}
+    {:noreply, assign(socket, selected_square: nil, promotion_prompt: nil, selected_hand_piece: nil)}
   end
 
   def handle_event("reset_board", _params, socket) do
@@ -150,6 +176,81 @@ defmodule ToukonAiShogiWeb.GameRoomLive do
   @impl true
   def handle_info(_msg, socket), do: {:noreply, socket}
 
+  defp handle_board_square_click(socket, {file, rank} = coordinate) do
+    board = socket.assigns.game_state.board
+
+    case {socket.assigns.selected_square, Board.fetch(board, coordinate)} do
+      {nil, {:ok, %Piece{} = piece}} ->
+        if owns_piece?(socket, piece) do
+          {:noreply,
+           socket
+           |> assign(selected_square: coordinate)
+           |> assign(selected_hand_piece: nil)
+           |> assign(last_event: {:pick, coordinate})}
+        else
+          {:noreply,
+           socket
+           |> assign(selected_hand_piece: nil)
+           |> assign(last_event: {:not_your_piece, coordinate})}
+        end
+
+      {nil, :error} ->
+        {:noreply,
+         socket
+         |> assign(selected_hand_piece: nil)
+         |> assign(last_event: {:empty_square, coordinate})}
+
+      {{^file, ^rank}, _} ->
+        {:noreply,
+         socket
+         |> assign(selected_square: nil)
+         |> assign(selected_hand_piece: nil)
+         |> assign(last_event: :cancel_selection)}
+
+      {selected, _} when is_tuple(selected) ->
+        handle_move(socket, selected, coordinate)
+    end
+  end
+
+  defp handle_hand_drop(socket, selected_hand, coordinate) do
+    case Board.fetch(socket.assigns.game_state.board, coordinate) do
+      {:ok, _piece} ->
+        {:noreply,
+         socket
+         |> assign(selected_square: nil)
+         |> assign(last_event: {:drop_error, :occupied_square})}
+
+      :error ->
+        user_id = socket.assigns.current_scope.user.id
+
+        case GameRooms.drop_piece(socket.assigns.room_id, user_id, selected_hand.id, coordinate) do
+          {:ok, _state} ->
+            {:noreply,
+             socket
+             |> assign(selected_square: nil)
+             |> assign(selected_hand_piece: nil)
+             |> assign(last_event: {:drop_applied, %{piece: selected_hand, to: coordinate}})}
+
+          {:error, reason} ->
+            {:noreply,
+             socket
+             |> assign(selected_square: nil)
+             |> assign(last_event: {:drop_error, reason})}
+        end
+    end
+  end
+
+  defp find_hand_piece(%{sente: sente, gote: gote}, piece_id) do
+    case Enum.find(sente, &(&1.id == piece_id)) do
+      %Piece{} = piece -> {:ok, :sente, piece}
+      nil ->
+        case Enum.find(gote, &(&1.id == piece_id)) do
+          %Piece{} = piece -> {:ok, :gote, piece}
+          nil -> :error
+        end
+    end
+  end
+
   defp handle_move(socket, from, to) do
     board = socket.assigns.game_state.board
     user_id = socket.assigns.current_scope.user.id
@@ -160,6 +261,7 @@ defmodule ToukonAiShogiWeb.GameRoomLive do
           {:noreply,
            socket
            |> assign(selected_square: to)
+           |> assign(selected_hand_piece: nil)
            |> assign(last_event: {:pick, to})}
 
         _ ->
@@ -169,6 +271,7 @@ defmodule ToukonAiShogiWeb.GameRoomLive do
             {:noreply,
              socket
              |> assign(selected_square: nil)
+             |> assign(selected_hand_piece: nil)
              |> assign(promotion_prompt: %{move: move})
              |> assign(last_event: {:await_promotion, move})}
           else
@@ -177,15 +280,16 @@ defmodule ToukonAiShogiWeb.GameRoomLive do
                 {:noreply,
                  socket
                  |> assign(selected_square: nil)
+                 |> assign(selected_hand_piece: nil)
                  |> assign(last_event: {:move_applied, Map.put(move, :promote, false)})}
 
               {:error, reason} ->
-                {:noreply, assign(socket, last_event: {:move_error, reason})}
+                {:noreply, assign(socket, selected_hand_piece: nil, last_event: {:move_error, reason})}
             end
           end
       end
     else
-      _ -> {:noreply, assign(socket, last_event: {:move_error, :no_piece})}
+      _ -> {:noreply, assign(socket, selected_hand_piece: nil, last_event: {:move_error, :no_piece})}
     end
   end
 
@@ -276,12 +380,26 @@ defmodule ToukonAiShogiWeb.GameRoomLive do
               </p>
             <% end %>
 
-            <BoardComponents.board
-              board={@game_state.board}
-              selected_square={@selected_square}
-              disabled={moves_blocked?(@promotion_prompt, @game_state)}
-              perspective={board_perspective(@role)}
-            />
+            <div class="flex w-full flex-col items-center gap-4 md:flex-row md:items-start">
+              <BoardComponents.board
+                board={@game_state.board}
+                selected_square={@selected_square}
+                disabled={moves_blocked?(@promotion_prompt, @game_state)}
+                perspective={board_perspective(@role)}
+              />
+
+              <div class="flex w-full max-w-[200px] flex-col gap-4 md:items-stretch">
+                <%= for owner <- hand_render_order(@role) do %>
+                  <BoardComponents.hand
+                    owner={owner}
+                    pieces={Map.get(@game_state.captures, owner, [])}
+                    perspective={board_perspective(@role)}
+                    selected_piece_id={selected_hand_piece_id(@selected_hand_piece, owner)}
+                    disabled={hand_disabled?(@role, owner, @promotion_prompt, @game_state)}
+                  />
+                <% end %>
+              </div>
+            </div>
           </div>
 
           <div class="flex flex-col gap-4 rounded-lg border border-slate-700 bg-slate-800 p-4">
@@ -290,6 +408,16 @@ defmodule ToukonAiShogiWeb.GameRoomLive do
               <%= case @last_event do %>
                 <% {:pick, {file, rank}} -> %>
                   <p>選択: {file}筋{rank}段</p>
+                <% {:hand_pick, piece} -> %>
+                  <p>持ち駒選択: {role_label(piece.owner)} {Piece.label(piece.type)}</p>
+                <% :cancel_selection -> %>
+                  <p>選択を解除しました</p>
+                <% :cancel_hand_selection -> %>
+                  <p>持ち駒の選択を解除しました</p>
+                <% {:drop_applied, %{piece: piece, to: {file, rank}}} -> %>
+                  <p>打ち: {role_label(piece.owner)} {Piece.label(piece.type)} → {file}筋{rank}段</p>
+                <% {:drop_error, reason} -> %>
+                  <p>持ち駒打ちエラー: {drop_error_message(reason)}</p>
                 <% {:move_applied, %{from: {from_file, from_rank}, to: {to_file, to_rank}, promote: promote?}} -> %>
                   <p>
                     移動: {from_file}筋{from_rank}段 → {to_file}筋{to_rank}段 {if promote?, do: "（成）"}
@@ -300,12 +428,16 @@ defmodule ToukonAiShogiWeb.GameRoomLive do
                   <p>リクエストを送信しました（仮判定: 引き分け）</p>
                 <% {:resign, side} -> %>
                   <p>{role_label(side)} が参りました</p>
+                <% {:hand_not_yours, _} -> %>
+                  <p>持ち駒は操作できません（あなたの駒台ではありません）</p>
+                <% {:hand_error, :not_players_turn} -> %>
+                  <p>持ち駒は相手の手番中です</p>
+                <% {:hand_error, :not_found} -> %>
+                  <p>持ち駒が見つかりませんでした</p>
                 <% {:not_your_piece, {file, rank}} -> %>
                   <p>選べません: {file}筋{rank}段の駒は相手の持ち駒</p>
                 <% {:empty_square, {file, rank}} -> %>
                   <p>空きマス ({file}, {rank})</p>
-                <% :cancel_selection -> %>
-                  <p>選択を解除しました</p>
                 <% {:await_promotion, move} -> %>
                   <p>成・不成の選択待ち: {move_text(move)}</p>
                 <% nil -> %>
@@ -316,11 +448,7 @@ defmodule ToukonAiShogiWeb.GameRoomLive do
             <div>
               <h3 class="text-sm font-semibold text-slate-200">選択中の駒</h3>
               <p class="mt-1 text-sm text-slate-300">
-                <%= if @selected_square do %>
-                  {elem(@selected_square, 1)}段 {elem(@selected_square, 0)}筋
-                <% else %>
-                  なし
-                <% end %>
+                <%= selected_item_label(@selected_square, @selected_hand_piece) %>
               </p>
             </div>
 
@@ -383,6 +511,32 @@ defmodule ToukonAiShogiWeb.GameRoomLive do
   defp role_label(:sente), do: "先手"
   defp role_label(:gote), do: "後手"
   defp role_label(_), do: "観戦"
+
+  defp hand_render_order(:gote), do: [:gote, :sente]
+  defp hand_render_order(_), do: [:sente, :gote]
+
+  defp hand_disabled?(role, owner, promotion_prompt, %State{metadata: metadata, turn: turn}) do
+    role != owner or not is_nil(promotion_prompt) or not is_nil(metadata[:result]) or turn != owner
+  end
+
+  defp selected_hand_piece_id(nil, _owner), do: nil
+  defp selected_hand_piece_id(%{owner: owner, id: id}, owner), do: id
+  defp selected_hand_piece_id(_selected, _owner), do: nil
+
+  defp drop_error_message(:occupied_square), do: "マスに駒が残っています"
+  defp drop_error_message(:not_players_turn), do: "持ち駒はあなたの手番ではありません"
+  defp drop_error_message(:piece_not_in_hand), do: "持ち駒の情報が最新ではありません"
+  defp drop_error_message(other), do: "エラー: #{inspect(other)}"
+
+  defp selected_item_label(_square, %{owner: owner, type: type}) do
+    "#{role_label(owner)} の持ち駒 #{Piece.label(type)}"
+  end
+
+  defp selected_item_label({file, rank}, _hand) when is_integer(file) and is_integer(rank) do
+    "#{rank}段 #{file}筋"
+  end
+
+  defp selected_item_label(_square, _hand), do: "なし"
 
   defp board_perspective(:gote), do: :gote
   defp board_perspective(_), do: :sente

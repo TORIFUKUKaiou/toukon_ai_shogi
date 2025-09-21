@@ -108,24 +108,67 @@ defmodule ToukonAiShogiWeb.BoardComponents do
   end
 
   defp piece_label(%Piece{type: type, owner: owner}) do
-    owner_label = if(owner == :sente, do: "先手", else: "後手")
-    "#{owner_label} #{piece_name(type)}"
+    "#{owner_label(owner)} #{Piece.label(type)}"
   end
 
-  defp piece_name(:gyoku), do: "玉将"
-  defp piece_name(:hisya), do: "飛車"
-  defp piece_name(:ryu), do: "龍王"
-  defp piece_name(:kaku), do: "角行"
-  defp piece_name(:uma), do: "龍馬"
-  defp piece_name(:kin), do: "金将"
-  defp piece_name(:gin), do: "銀将"
-  defp piece_name(:narigin), do: "成銀"
-  defp piece_name(:kei), do: "桂馬"
-  defp piece_name(:narikei), do: "成桂"
-  defp piece_name(:kyo), do: "香車"
-  defp piece_name(:narikyo), do: "成香"
-  defp piece_name(:fu), do: "歩兵"
-  defp piece_name(:tokin), do: "と金"
+  @hand_piece_order [:gyoku, :hisya, :kaku, :kin, :gin, :kei, :kyo, :fu, :ryu, :uma, :narigin, :narikei, :narikyo, :tokin]
+
+  attr :owner, :atom, required: true
+  attr :pieces, :list, required: true
+  attr :label, :string, default: nil
+  attr :perspective, :atom, default: :sente
+  attr :selected_piece_id, :string, default: nil
+  attr :disabled, :boolean, default: false
+
+  def hand(assigns) do
+    assigns =
+      assigns
+      |> assign(:pieces, sort_hand_pieces(assigns.pieces))
+      |> assign_new(:label, fn -> "#{owner_label(assigns.owner)}の持ち駒" end)
+
+    ~H"""
+    <div class="flex flex-col gap-2">
+      <p class="text-xs font-semibold uppercase tracking-wide text-slate-300">{@label}</p>
+      <div class="flex flex-wrap gap-2">
+        <%= if Enum.empty?(@pieces) do %>
+          <span class="rounded border border-slate-700 px-3 py-2 text-xs text-slate-400">なし</span>
+        <% else %>
+          <%= for piece <- @pieces do %>
+            <button
+              type="button"
+              phx-click="hand_piece_clicked"
+              phx-value-piece_id={piece.id}
+              class={hand_piece_classes(piece.id == @selected_piece_id, @disabled)}
+              disabled={@disabled}
+            >
+              <.board_piece piece={piece} perspective={@perspective} />
+            </button>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+    """
+  end
+
+  defp sort_hand_pieces(pieces) do
+    Enum.sort_by(pieces, fn %Piece{type: type, id: id} -> {hand_sort_index(type), id} end)
+  end
+
+  defp hand_sort_index(type) do
+    Enum.find_index(@hand_piece_order, &(&1 == type)) || length(@hand_piece_order)
+  end
+
+  defp hand_piece_classes(selected?, disabled?) do
+    [
+      "flex h-16 w-12 items-center justify-center rounded border border-amber-200/20 bg-amber-900/20 transition",
+      (if selected?, do: "ring-2 ring-amber-400 bg-amber-700/30", else: nil),
+      (if disabled?, do: "opacity-60 cursor-not-allowed", else: "hover:bg-amber-700/20")
+    ]
+  end
+
+  defp owner_label(:sente), do: "先手"
+  defp owner_label(:gote), do: "後手"
+  defp owner_label(_), do: "観戦"
 
   defp rank_sequence(:gote), do: 1..9
   defp rank_sequence(_), do: 9..1//-1

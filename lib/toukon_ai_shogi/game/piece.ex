@@ -28,4 +28,20 @@ defmodule ToukonAiShogi.Game.Piece do
           owner: :sente | :gote,
           promoted: boolean()
         }
+  @spec label(type()) :: String.t()
+  def label(:gyoku), do: "玉将"
+  def label(:hisya), do: "飛車"
+  def label(:kaku), do: "角行"
+  def label(:kin), do: "金将"
+  def label(:gin), do: "銀将"
+  def label(:kei), do: "桂馬"
+  def label(:kyo), do: "香車"
+  def label(:fu), do: "歩兵"
+  def label(:ryu), do: "龍王"
+  def label(:uma), do: "龍馬"
+  def label(:narigin), do: "成銀"
+  def label(:narikei), do: "成桂"
+  def label(:narikyo), do: "成香"
+  def label(:tokin), do: "と金"
+
 end

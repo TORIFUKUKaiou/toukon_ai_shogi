@@ -40,6 +40,12 @@ defmodule ToukonAiShogi.GameRooms do
     end
   end
 
+  def drop_piece(room_id, user_id, piece_id, to) do
+    with {:ok, :found} <- lookup(room_id) do
+      GameRoom.drop_piece(room_id, user_id, piece_id, to)
+    end
+  end
+
   def request_review(room_id, user_id) do
     with {:ok, :found} <- lookup(room_id) do
       GameRoom.request_review(room_id, user_id)

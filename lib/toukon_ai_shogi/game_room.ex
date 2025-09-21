@@ -28,6 +28,10 @@ defmodule ToukonAiShogi.GameRoom do
     GenServer.call(via(room_id), {:apply_move, user_id, move, opts})
   end
 
+  def drop_piece(room_id, user_id, piece_id, to) do
+    GenServer.call(via(room_id), {:drop_piece, user_id, piece_id, to})
+  end
+
   def promotion_pending?(room_id) do
     GenServer.call(via(room_id), :promotion_pending?)
   end
@@ -108,6 +112,29 @@ defmodule ToukonAiShogi.GameRoom do
             broadcast(state.room_id, {:state, new_state})
 
             maybe_finish_session(state, new_state)
+
+            {:reply, {:ok, new_state}, %{state | game_state: new_state}}
+
+          {:error, reason} ->
+            {:reply, {:error, reason}, state}
+        end
+    end
+  end
+
+  def handle_call({:drop_piece, user_id, piece_id, to}, _from, state) do
+    role = Map.get(state.by_user_id, user_id)
+
+    cond do
+      role == nil ->
+        {:reply, {:error, :not_authorized}, state}
+
+      state.game_state.metadata[:result] ->
+        {:reply, {:error, :game_finished}, state}
+
+      true ->
+        case Game.drop_piece(state.game_state, role, piece_id, to) do
+          {:ok, %State{} = new_state} ->
+            broadcast(state.room_id, {:state, new_state})
 
             {:reply, {:ok, new_state}, %{state | game_state: new_state}}
 
