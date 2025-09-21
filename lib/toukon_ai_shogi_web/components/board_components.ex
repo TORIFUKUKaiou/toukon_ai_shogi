@@ -5,8 +5,7 @@ defmodule ToukonAiShogiWeb.BoardComponents do
 
   use ToukonAiShogiWeb, :html
 
-  alias ToukonAiShogi.Game.Board
-  alias ToukonAiShogi.Game.Piece
+  alias ToukonAiShogi.Game.{Board, Notation, Piece}
 
   @piece_assets %{
     gyoku: "syougi02_gyokusyou.png",
@@ -33,15 +32,26 @@ defmodule ToukonAiShogiWeb.BoardComponents do
   def board(assigns) do
     ~H"""
     <div class="flex flex-col gap-2">
-      <div class="grid grid-cols-9 gap-[2px] bg-amber-800 p-[2px] shadow-lg">
-        <%= for rank <- rank_sequence(@perspective), file <- file_sequence(@perspective) do %>
-          <.board_square
-            coordinate={{file, rank}}
-            piece={Map.get(@board.squares, {file, rank})}
-            selected_square={@selected_square}
-            disabled={@disabled}
-            perspective={@perspective}
-          />
+      <div class="grid grid-cols-[repeat(9,_minmax(0,_1fr))_min-content] gap-1 text-xs font-semibold text-slate-200">
+        <%= for file <- file_sequence(@perspective) do %>
+          <span class="text-center">{Notation.file_label(file)}</span>
+        <% end %>
+        <span />
+      </div>
+      <div class="grid grid-cols-[repeat(9,_minmax(0,_1fr))_min-content] gap-[2px] bg-amber-800 p-[2px] shadow-lg">
+        <%= for rank <- rank_sequence(@perspective) do %>
+          <%= for file <- file_sequence(@perspective) do %>
+            <.board_square
+              coordinate={{file, rank}}
+              piece={Map.get(@board.squares, {file, rank})}
+              selected_square={@selected_square}
+              disabled={@disabled}
+              perspective={@perspective}
+            />
+          <% end %>
+          <span class="flex items-center justify-center bg-slate-900/70 px-1 text-xs font-semibold text-slate-200">
+            {Notation.rank_label(rank)}
+          </span>
         <% end %>
       </div>
       <p class="text-xs text-slate-300 opacity-80">
