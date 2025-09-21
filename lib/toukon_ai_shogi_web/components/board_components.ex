@@ -27,6 +27,7 @@ defmodule ToukonAiShogiWeb.BoardComponents do
 
   attr :board, Board, required: true
   attr :selected_square, :any, default: nil
+  attr :disabled, :boolean, default: false
 
   def board(assigns) do
     ~H"""
@@ -37,11 +38,12 @@ defmodule ToukonAiShogiWeb.BoardComponents do
             coordinate={{file, rank}}
             piece={Map.get(@board.squares, {file, rank})}
             selected_square={@selected_square}
+            disabled={@disabled}
           />
         <% end %>
       </div>
       <p class="text-xs text-slate-300 opacity-80">
-        駒をクリックすると選択／再クリックで解除。別マスをクリックすると未実装の移動スタブが発火します。
+        駒をクリックして移動先を指定できます。成りが可能な場合は成／不成を選択してください。
       </p>
     </div>
     """
@@ -50,6 +52,7 @@ defmodule ToukonAiShogiWeb.BoardComponents do
   attr :coordinate, :any, required: true
   attr :piece, Piece, default: nil
   attr :selected_square, :any, default: nil
+  attr :disabled, :boolean, default: false
 
   defp board_square(assigns) do
     assigns = assign(assigns, :selected?, assigns[:selected_square] == assigns.coordinate)
@@ -59,7 +62,11 @@ defmodule ToukonAiShogiWeb.BoardComponents do
       phx-click="square_clicked"
       phx-value-file={elem(@coordinate, 0)}
       phx-value-rank={elem(@coordinate, 1)}
-      class={["relative aspect-square bg-amber-200", square_classes(@selected?)]}
+      class={[
+        "relative aspect-square bg-amber-200 transition",
+        square_classes(@selected?, @disabled)
+      ]}
+      disabled={@disabled}
     >
       <%= if @piece do %>
         <.board_piece piece={@piece} />
@@ -86,8 +93,10 @@ defmodule ToukonAiShogiWeb.BoardComponents do
     """
   end
 
-  defp square_classes(true), do: "ring-4 ring-amber-400"
-  defp square_classes(false), do: ""
+  defp square_classes(true, true), do: "ring-4 ring-amber-300/80 opacity-60 cursor-not-allowed"
+  defp square_classes(true, false), do: "ring-4 ring-amber-400"
+  defp square_classes(false, true), do: "opacity-60 cursor-not-allowed"
+  defp square_classes(false, false), do: ""
 
   defp piece_asset(%Piece{type: type}) do
     filename = Map.fetch!(@piece_assets, type)

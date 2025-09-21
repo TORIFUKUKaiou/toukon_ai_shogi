@@ -38,4 +38,15 @@ defmodule ToukonAiShogi.Game.Board do
     {removed, updated} = Map.pop(squares, coordinate)
     {removed, %{board | squares: updated}}
   end
+
+  @doc """
+  指定座標の駒を取り除きつつ取得する。空マスなら `{:error, :empty}` を返す。
+  """
+  @spec take(t(), Game.coordinate()) :: {:ok, Piece.t(), t()} | {:error, :empty}
+  def take(%__MODULE__{} = board, coordinate) do
+    case drop(board, coordinate) do
+      {nil, _updated_board} -> {:error, :empty}
+      {%Piece{} = piece, updated_board} -> {:ok, piece, updated_board}
+    end
+  end
 end

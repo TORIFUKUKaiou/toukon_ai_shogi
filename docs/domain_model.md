@@ -27,6 +27,9 @@ ToukonAiShogi.Game               # コンテキスト。初期化やステート
 ### metadata の暫定フィールド
 - `selected_piece`: LiveView UI がハイライト中の駒 ID
 - `pending_move`: `%{from: {file, rank}, to: {file, rank}}` 形式で未適用の移動要求を保持
+- `last_move`: 直近に適用された指し手（`promote` や `captured` 情報を含む）
+- `last_request`: 最新のリクエスト記録（リクエストした手番・判定結果）
+- `result`: 対局結果（例: `%{type: :resign, winner: :sente, loser: :gote}`）
 
 ## Board 構造体
 - `squares`: `%{{file, rank} => Piece.t()}`
