@@ -401,6 +401,6 @@ defmodule ToukonAiShogiWeb.GameRoomLive do
   end
 
   defp moves_blocked?(promotion_prompt, game_state) do
-    not is_nil(promotion_prompt) or game_state.metadata[:result]
+    (not is_nil(promotion_prompt)) or (not is_nil(game_state.metadata[:result]))
   end
 end

@@ -46,9 +46,9 @@ defmodule ToukonAiShogi.Game do
       turn: state.turn,
       board: serialize_board(state.board),
       captures: serialize_captures(state.captures),
-      move_log: state.move_log,
-      request_log: state.request_log,
-      metadata: state.metadata
+      move_log: Enum.map(state.move_log, &serialize_move/1),
+      request_log: Enum.map(state.request_log, &serialize_request/1),
+      metadata: serialize_metadata(state.metadata)
     }
   end
 
@@ -168,6 +168,43 @@ defmodule ToukonAiShogi.Game do
       promoted: piece.promoted
     }
   end
+
+  defp serialize_move(nil), do: nil
+
+  defp serialize_move(%{from: from, to: to} = move) do
+    move
+    |> Map.put(:from, serialize_coordinate(from))
+    |> Map.put(:to, serialize_coordinate(to))
+  end
+
+  defp serialize_move(other), do: other
+
+  defp serialize_request(nil), do: nil
+  defp serialize_request(entry) when is_map(entry), do: entry
+  defp serialize_request(other), do: other
+
+  defp serialize_metadata(metadata) when is_map(metadata) do
+    metadata
+    |> maybe_update_map(:pending_move, &serialize_move/1)
+    |> maybe_update_map(:last_move, &serialize_move/1)
+    |> maybe_update_map(:last_request, &serialize_request/1)
+  end
+
+  defp serialize_metadata(other), do: other
+
+  defp maybe_update_map(map, key, fun) do
+    case Map.fetch(map, key) do
+      {:ok, nil} -> map
+      {:ok, value} -> Map.put(map, key, fun.(value))
+      :error -> map
+    end
+  end
+
+  defp serialize_coordinate({file, rank}) when is_integer(file) and is_integer(rank) do
+    %{file: file, rank: rank}
+  end
+
+  defp serialize_coordinate(other), do: other
 
   defp maybe_promote(%Piece{} = piece, true) do
     if promotable_type?(piece.type) do

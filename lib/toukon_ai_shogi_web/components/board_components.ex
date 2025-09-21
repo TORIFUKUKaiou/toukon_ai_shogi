@@ -33,7 +33,7 @@ defmodule ToukonAiShogiWeb.BoardComponents do
     ~H"""
     <div class="flex flex-col gap-2">
       <div class="grid grid-cols-9 gap-[2px] bg-amber-800 p-[2px] shadow-lg">
-        <%= for rank <- 9..1/-1, file <- 1..9 do %>
+        <%= for rank <- 9..1//-1, file <- 1..9 do %>
           <.board_square
             coordinate={{file, rank}}
             piece={Map.get(@board.squares, {file, rank})}
