@@ -83,7 +83,7 @@ defmodule ToukonAiShogiWeb.LobbyLive do
       <div class="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 text-slate-100">
         <div>
           <h1 class="text-3xl font-semibold">ロビー</h1>
-          <p class="text-sm text-slate-300">オンライン: <%= length(@online_players) %> 名</p>
+          <p class="text-sm text-slate-300">オンライン: {length(@online_players)} 名</p>
         </div>
 
         <div class="flex flex-col gap-4 rounded-lg border border-slate-700 bg-slate-800 p-4">
@@ -92,7 +92,7 @@ defmodule ToukonAiShogiWeb.LobbyLive do
             class="w-full rounded bg-amber-500 px-4 py-3 text-center text-sm font-semibold text-slate-900 hover:bg-amber-400 disabled:bg-slate-500"
             disabled={@queue_status == :waiting}
           >
-            <%= if @queue_status == :waiting, do: "マッチング待機中...", else: "対局相手を探す" %>
+            {if @queue_status == :waiting, do: "マッチング待機中...", else: "対局相手を探す"}
           </button>
 
           <%= if @queue_status == :waiting do %>
@@ -101,7 +101,7 @@ defmodule ToukonAiShogiWeb.LobbyLive do
 
           <%= if @error_message do %>
             <p class="rounded border border-red-500/50 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-              <%= @error_message %>
+              {@error_message}
             </p>
           <% end %>
         </div>
@@ -113,7 +113,7 @@ defmodule ToukonAiShogiWeb.LobbyLive do
           <% else %>
             <ul class="mt-2 space-y-1 text-sm text-slate-200">
               <%= for name <- @online_players do %>
-                <li><%= name %></li>
+                <li>{name}</li>
               <% end %>
             </ul>
           <% end %>

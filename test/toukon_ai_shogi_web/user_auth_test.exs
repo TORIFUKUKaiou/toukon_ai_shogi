@@ -229,7 +229,7 @@ defmodule ToukonAiShogiWeb.UserAuthTest do
         |> UserAuth.redirect_if_user_is_authenticated([])
 
       assert conn.halted
-    assert redirected_to(conn) == ~p"/lobby"
+      assert redirected_to(conn) == ~p"/lobby"
     end
 
     test "does not redirect if user is not authenticated", %{conn: conn} do
