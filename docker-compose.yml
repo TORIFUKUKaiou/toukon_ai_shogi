@@ -1,0 +1,64 @@
+services:
+  nginx-proxy:
+    image: nginxproxy/nginx-proxy
+    container_name: nginx-proxy
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - certs:/etc/nginx/certs
+      - vhost:/etc/nginx/vhost.d
+      - html:/usr/share/nginx/html
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+
+  nginx-proxy-acme:
+    image: nginxproxy/acme-companion
+    container_name: nginx-proxy-acme
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - acme:/etc/acme.sh
+      - certs:/etc/nginx/certs
+      - vhost:/etc/nginx/vhost.d
+      - html:/usr/share/nginx/html
+    environment:
+      - DEFAULT_EMAIL=torifuku.kaiou@gmail.com
+      - NGINX_PROXY_CONTAINER=nginx-proxy
+    depends_on:
+      - nginx-proxy
+
+  elixir:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # Runs app on the same network as the database container, allows "forwardPorts" in devcontainer.json function.
+    network_mode: service:db
+    environment:
+      SECRET_KEY_BASE: 3IuAYS8yod5/tRAy+GmmAU+blS39HzgNpDbe+s685WWcCFKGDfD72W7bwpZAn31B
+      DATABASE_URL: ecto://postgres:postgres@db/toukon_ai_shogi
+      PHX_HOST: toukon-ai-shogi.autoracex.dev
+      PHX_SERVER: true
+      VIRTUAL_HOST: toukon-ai-shogi.autoracex.dev
+      VIRTUAL_PORT: 4000
+      LETSENCRYPT_HOST: toukon-ai-shogi.autoracex.dev
+      LETSENCRYPT_EMAIL: torifuku.kaiou@gmail.com
+    ports:
+      - 4000:4000
+
+  db:
+    image: postgres:latest
+    restart: unless-stopped
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: toukon_ai_shogi
+    depends_on:
+      - nginx-proxy-acme
+
+volumes:
+  certs:
+  vhost:
+  html:
+  acme:
+  postgres-data:
