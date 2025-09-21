@@ -11,8 +11,8 @@ config :toukon_ai_shogi, ToukonAiShogiWeb.Endpoint,
 # Configures Swoosh API Client
 config :swoosh, api_client: Swoosh.ApiClient.Req
 
-# Disable Swoosh Local Memory Storage
-config :swoosh, local: false
+# Keep Swoosh Local Memory Storage enabled so we can reuse the dev mailbox in prod for now
+config :swoosh, local: true
 
 # Do not print debug messages in production
 config :logger, level: :info
