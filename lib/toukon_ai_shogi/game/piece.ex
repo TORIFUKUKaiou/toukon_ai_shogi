@@ -43,5 +43,4 @@ defmodule ToukonAiShogi.Game.Piece do
   def label(:narikei), do: "成桂"
   def label(:narikyo), do: "成香"
   def label(:tokin), do: "と金"
-
 end

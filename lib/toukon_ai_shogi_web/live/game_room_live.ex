@@ -3,9 +3,7 @@ defmodule ToukonAiShogiWeb.GameRoomLive do
 
   alias ToukonAiShogi.GameRooms
   alias ToukonAiShogi.Game
-  alias ToukonAiShogi.Game.Board
-  alias ToukonAiShogi.Game.Piece
-  alias ToukonAiShogi.Game.State
+  alias ToukonAiShogi.Game.{Board, Notation, Piece, State}
   alias ToukonAiShogiWeb.BoardComponents
 
   @impl true
@@ -85,7 +83,8 @@ defmodule ToukonAiShogiWeb.GameRoomLive do
               socket.assigns.game_state.turn != owner ->
                 {:noreply, assign(socket, last_event: {:hand_error, :not_players_turn})}
 
-              socket.assigns.selected_hand_piece && socket.assigns.selected_hand_piece.id == piece.id ->
+              socket.assigns.selected_hand_piece &&
+                  socket.assigns.selected_hand_piece.id == piece.id ->
                 {:noreply,
                  socket
                  |> assign(selected_hand_piece: nil)
@@ -114,11 +113,16 @@ defmodule ToukonAiShogiWeb.GameRoomLive do
 
     case GameRooms.apply_move(socket.assigns.room_id, user_id, move, promote: promote?) do
       {:ok, _state} ->
+        move_info =
+          move
+          |> Map.put(:promote, promote?)
+          |> Map.put(:notation, Notation.move_label(move.from, move.to, promote?))
+
         {:noreply,
          socket
          |> assign(promotion_prompt: nil, selected_square: nil)
          |> assign(selected_hand_piece: nil)
-         |> assign(last_event: {:move_applied, Map.put(move, :promote, promote?)})}
+         |> assign(last_event: {:move_applied, move_info})}
 
       {:error, reason} ->
         {:noreply,
@@ -161,7 +165,8 @@ defmodule ToukonAiShogiWeb.GameRoomLive do
   end
 
   def handle_event("cancel", _params, socket) do
-    {:noreply, assign(socket, selected_square: nil, promotion_prompt: nil, selected_hand_piece: nil)}
+    {:noreply,
+     assign(socket, selected_square: nil, promotion_prompt: nil, selected_hand_piece: nil)}
   end
 
   def handle_event("reset_board", _params, socket) do
@@ -225,11 +230,17 @@ defmodule ToukonAiShogiWeb.GameRoomLive do
 
         case GameRooms.drop_piece(socket.assigns.room_id, user_id, selected_hand.id, coordinate) do
           {:ok, _state} ->
+            drop_info = %{
+              piece: selected_hand,
+              to: coordinate,
+              notation: Notation.drop_label(selected_hand.type, coordinate)
+            }
+
             {:noreply,
              socket
              |> assign(selected_square: nil)
              |> assign(selected_hand_piece: nil)
-             |> assign(last_event: {:drop_applied, %{piece: selected_hand, to: coordinate}})}
+             |> assign(last_event: {:drop_applied, drop_info})}
 
           {:error, reason} ->
             {:noreply,
@@ -242,7 +253,9 @@ defmodule ToukonAiShogiWeb.GameRoomLive do
 
   defp find_hand_piece(%{sente: sente, gote: gote}, piece_id) do
     case Enum.find(sente, &(&1.id == piece_id)) do
-      %Piece{} = piece -> {:ok, :sente, piece}
+      %Piece{} = piece ->
+        {:ok, :sente, piece}
+
       nil ->
         case Enum.find(gote, &(&1.id == piece_id)) do
           %Piece{} = piece -> {:ok, :gote, piece}
@@ -277,19 +290,26 @@ defmodule ToukonAiShogiWeb.GameRoomLive do
           else
             case GameRooms.apply_move(socket.assigns.room_id, user_id, move, promote: false) do
               {:ok, _state} ->
+                move_info =
+                  move
+                  |> Map.put(:promote, false)
+                  |> Map.put(:notation, Notation.move_label(from, to, false))
+
                 {:noreply,
                  socket
                  |> assign(selected_square: nil)
                  |> assign(selected_hand_piece: nil)
-                 |> assign(last_event: {:move_applied, Map.put(move, :promote, false)})}
+                 |> assign(last_event: {:move_applied, move_info})}
 
               {:error, reason} ->
-                {:noreply, assign(socket, selected_hand_piece: nil, last_event: {:move_error, reason})}
+                {:noreply,
+                 assign(socket, selected_hand_piece: nil, last_event: {:move_error, reason})}
             end
           end
       end
     else
-      _ -> {:noreply, assign(socket, selected_hand_piece: nil, last_event: {:move_error, :no_piece})}
+      _ ->
+        {:noreply, assign(socket, selected_hand_piece: nil, last_event: {:move_error, :no_piece})}
     end
   end
 
@@ -407,21 +427,19 @@ defmodule ToukonAiShogiWeb.GameRoomLive do
             <div class="rounded bg-slate-900/60 p-3 text-xs text-slate-300">
               <%= case @last_event do %>
                 <% {:pick, {file, rank}} -> %>
-                  <p>選択: {file}筋{rank}段</p>
+                  <p>選択: {Notation.square_label({file, rank})}</p>
                 <% {:hand_pick, piece} -> %>
                   <p>持ち駒選択: {role_label(piece.owner)} {Piece.label(piece.type)}</p>
                 <% :cancel_selection -> %>
                   <p>選択を解除しました</p>
                 <% :cancel_hand_selection -> %>
                   <p>持ち駒の選択を解除しました</p>
-                <% {:drop_applied, %{piece: piece, to: {file, rank}}} -> %>
-                  <p>打ち: {role_label(piece.owner)} {Piece.label(piece.type)} → {file}筋{rank}段</p>
+                <% {:drop_applied, %{piece: piece, notation: notation}} -> %>
+                  <p>打ち: {role_label(piece.owner)} {notation}</p>
                 <% {:drop_error, reason} -> %>
                   <p>持ち駒打ちエラー: {drop_error_message(reason)}</p>
-                <% {:move_applied, %{from: {from_file, from_rank}, to: {to_file, to_rank}, promote: promote?}} -> %>
-                  <p>
-                    移動: {from_file}筋{from_rank}段 → {to_file}筋{to_rank}段 {if promote?, do: "（成）"}
-                  </p>
+                <% {:move_applied, %{notation: notation}} -> %>
+                  <p>移動: {notation}</p>
                 <% {:move_error, reason} -> %>
                   <p>移動エラー: {inspect(reason)}</p>
                 <% {:request, _entry} -> %>
@@ -435,9 +453,9 @@ defmodule ToukonAiShogiWeb.GameRoomLive do
                 <% {:hand_error, :not_found} -> %>
                   <p>持ち駒が見つかりませんでした</p>
                 <% {:not_your_piece, {file, rank}} -> %>
-                  <p>選べません: {file}筋{rank}段の駒は相手の持ち駒</p>
+                  <p>選べません: {Notation.square_label({file, rank})} の駒は相手の持ち駒</p>
                 <% {:empty_square, {file, rank}} -> %>
-                  <p>空きマス ({file}, {rank})</p>
+                  <p>空きマス {Notation.square_label({file, rank})}</p>
                 <% {:await_promotion, move} -> %>
                   <p>成・不成の選択待ち: {move_text(move)}</p>
                 <% nil -> %>
@@ -516,7 +534,8 @@ defmodule ToukonAiShogiWeb.GameRoomLive do
   defp hand_render_order(_), do: [:sente, :gote]
 
   defp hand_disabled?(role, owner, promotion_prompt, %State{metadata: metadata, turn: turn}) do
-    role != owner or not is_nil(promotion_prompt) or not is_nil(metadata[:result]) or turn != owner
+    role != owner or not is_nil(promotion_prompt) or not is_nil(metadata[:result]) or
+      turn != owner
   end
 
   defp selected_hand_piece_id(nil, _owner), do: nil
@@ -533,7 +552,7 @@ defmodule ToukonAiShogiWeb.GameRoomLive do
   end
 
   defp selected_item_label({file, rank}, _hand) when is_integer(file) and is_integer(rank) do
-    "#{rank}段 #{file}筋"
+    Notation.square_label({file, rank})
   end
 
   defp selected_item_label(_square, _hand), do: "なし"
@@ -541,8 +560,8 @@ defmodule ToukonAiShogiWeb.GameRoomLive do
   defp board_perspective(:gote), do: :gote
   defp board_perspective(_), do: :sente
 
-  defp move_text(%{from: {from_file, from_rank}, to: {to_file, to_rank}}) do
-    "#{from_file}筋#{from_rank}段 → #{to_file}筋#{to_rank}段"
+  defp move_text(%{from: from, to: to} = move) do
+    Notation.move_label(from, to, Map.get(move, :promote, false))
   end
 
   defp result_message(%{type: :resign, winner: winner, loser: loser}) do
@@ -559,6 +578,6 @@ defmodule ToukonAiShogiWeb.GameRoomLive do
   end
 
   defp moves_blocked?(promotion_prompt, game_state) do
-    (not is_nil(promotion_prompt)) or (not is_nil(game_state.metadata[:result]))
+    not is_nil(promotion_prompt) or not is_nil(game_state.metadata[:result])
   end
 end

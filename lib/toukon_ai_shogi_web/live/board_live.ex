@@ -2,7 +2,7 @@ defmodule ToukonAiShogiWeb.BoardLive do
   use ToukonAiShogiWeb, :live_view
 
   alias ToukonAiShogi.Game
-  alias ToukonAiShogi.Game.{Board, Piece, State}
+  alias ToukonAiShogi.Game.{Board, Notation, Piece, State}
   alias ToukonAiShogiWeb.BoardComponents
 
   @impl true
@@ -247,13 +247,11 @@ defmodule ToukonAiShogiWeb.BoardLive do
             <div class="rounded bg-slate-900/60 p-3 text-xs text-slate-300">
               <%= case @last_event do %>
                 <% {:pick, {file, rank}} -> %>
-                  <p>選択: {file}筋{rank}段</p>
+                  <p>選択: {Notation.square_label({file, rank})}</p>
                 <% {:drop, {file, rank}} -> %>
-                  <p>ドロップ: {file}筋{rank}段（駒はまだ移動しません）</p>
-                <% {:move_applied, %{from: {from_file, from_rank}, to: {to_file, to_rank}, promote: promote?}} -> %>
-                  <p>
-                    移動: {from_file}筋{from_rank}段 → {to_file}筋{to_rank}段 {if promote?, do: "（成）"}
-                  </p>
+                  <p>ドロップ: {Notation.square_label({file, rank})}（駒はまだ移動しません）</p>
+                <% {:move_applied, %{notation: notation}} -> %>
+                  <p>移動: {notation}</p>
                 <% {:move_error, reason} -> %>
                   <p>移動エラー: {inspect(reason)}</p>
                 <% {:request, entry} -> %>
@@ -261,9 +259,9 @@ defmodule ToukonAiShogiWeb.BoardLive do
                 <% {:resign, side} -> %>
                   <p>{turn_label(side)} が参りました</p>
                 <% {:not_your_piece, {file, rank}} -> %>
-                  <p>選べません: {file}筋{rank}段の駒は相手の持ち駒</p>
+                  <p>選べません: {Notation.square_label({file, rank})} の駒は相手の持ち駒</p>
                 <% {:empty_square, {file, rank}} -> %>
-                  <p>空きマス ({file}, {rank})</p>
+                  <p>空きマス {Notation.square_label({file, rank})}</p>
                 <% :cancel_selection -> %>
                   <p>選択を解除しました</p>
                 <% :reset -> %>
@@ -279,7 +277,7 @@ defmodule ToukonAiShogiWeb.BoardLive do
               <h3 class="text-sm font-semibold text-slate-200">選択中の駒</h3>
               <p class="mt-1 text-sm text-slate-300">
                 <%= if @selected_square do %>
-                  {elem(@selected_square, 1)}段 {elem(@selected_square, 0)}筋
+                  Notation.square_label(@selected_square)
                 <% else %>
                   なし
                 <% end %>
@@ -377,11 +375,16 @@ defmodule ToukonAiShogiWeb.BoardLive do
     else
       case Game.apply_move(socket.assigns.game_state, move, promote: false) do
         {:ok, new_state} ->
+          move_info =
+            move
+            |> Map.put(:promote, false)
+            |> Map.put(:notation, Notation.move_label(from, to, false))
+
           {:noreply,
            socket
            |> assign_game_state(new_state)
            |> assign(selected_square: nil)
-           |> assign(last_event: {:move_applied, Map.put(move, :promote, false)})}
+           |> assign(last_event: {:move_applied, move_info})}
 
         {:error, reason} ->
           {:noreply, assign(socket, last_event: {:move_error, reason})}
@@ -406,8 +409,8 @@ defmodule ToukonAiShogiWeb.BoardLive do
   defp in_promotion_zone?(:gote, rank) when rank <= 3, do: true
   defp in_promotion_zone?(_, _), do: false
 
-  defp move_text(%{from: {from_file, from_rank}, to: {to_file, to_rank}}) do
-    "#{from_file}筋#{from_rank}段 → #{to_file}筋#{to_rank}段"
+  defp move_text(%{from: from, to: to} = move) do
+    Notation.move_label(from, to, Map.get(move, :promote, false))
   end
 
   defp game_result(%State{metadata: metadata}), do: Map.get(metadata, :result)

@@ -6,7 +6,7 @@ defmodule ToukonAiShogi.Game do
   任意の座標更新を許容する前提で構造体を定義する。
   """
 
-  alias ToukonAiShogi.Game.{Board, InitialSetup, Piece, State}
+  alias ToukonAiShogi.Game.{Board, InitialSetup, Notation, Piece, State}
 
   @type coordinate :: {pos_integer(), pos_integer()}
 
@@ -72,7 +72,8 @@ defmodule ToukonAiShogi.Game do
       updated_captures = maybe_capture(state.captures, captured_piece, piece.owner)
       move_entry = build_move_entry(move, promote?, captured_piece)
 
-      {:ok, finalize_move(state, updated_board, updated_captures, move_entry, opponent(piece.owner))}
+      {:ok,
+       finalize_move(state, updated_board, updated_captures, move_entry, opponent(piece.owner))}
     else
       {:error, :empty} -> {:error, :no_piece}
       {:error, :not_players_turn} = error -> error
@@ -87,7 +88,8 @@ defmodule ToukonAiShogi.Game do
   def drop_piece(%State{} = state, owner, piece_id, to) when owner in [:sente, :gote] do
     with :ok <- ensure_turn(state, owner),
          :ok <- ensure_empty(state.board, to),
-         {:ok, %Piece{} = piece, captures_without_piece} <- pop_capture_piece(state.captures, owner, piece_id) do
+         {:ok, %Piece{} = piece, captures_without_piece} <-
+           pop_capture_piece(state.captures, owner, piece_id) do
       updated_board = Board.put(state.board, to, piece)
       updated_captures = Map.put(state.captures, owner, captures_without_piece)
       move_entry = build_drop_entry(piece, to)
@@ -99,7 +101,6 @@ defmodule ToukonAiShogi.Game do
       {:error, :piece_not_in_hand} = error -> error
     end
   end
-
 
   @doc """
   対局結果を記録する。
@@ -283,7 +284,8 @@ defmodule ToukonAiShogi.Game do
         case captured_piece do
           nil -> nil
           %Piece{} = piece -> %{type: piece.type, owner: piece.owner, promoted: piece.promoted}
-        end
+        end,
+      notation: Notation.move_label(from, to, promote?)
     }
   end
 
@@ -293,7 +295,8 @@ defmodule ToukonAiShogi.Game do
       from: %{hand: true, owner: piece.owner, piece_id: piece.id, type: piece.type},
       to: to,
       promote: false,
-      captured: nil
+      captured: nil,
+      notation: Notation.drop_label(piece.type, to)
     }
   end
 

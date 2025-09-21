@@ -111,7 +111,22 @@ defmodule ToukonAiShogiWeb.BoardComponents do
     "#{owner_label(owner)} #{Piece.label(type)}"
   end
 
-  @hand_piece_order [:gyoku, :hisya, :kaku, :kin, :gin, :kei, :kyo, :fu, :ryu, :uma, :narigin, :narikei, :narikyo, :tokin]
+  @hand_piece_order [
+    :gyoku,
+    :hisya,
+    :kaku,
+    :kin,
+    :gin,
+    :kei,
+    :kyo,
+    :fu,
+    :ryu,
+    :uma,
+    :narigin,
+    :narikei,
+    :narikyo,
+    :tokin
+  ]
 
   attr :owner, :atom, required: true
   attr :pieces, :list, required: true
@@ -161,8 +176,8 @@ defmodule ToukonAiShogiWeb.BoardComponents do
   defp hand_piece_classes(selected?, disabled?) do
     [
       "flex h-16 w-12 items-center justify-center rounded border border-amber-200/20 bg-amber-900/20 transition",
-      (if selected?, do: "ring-2 ring-amber-400 bg-amber-700/30", else: nil),
-      (if disabled?, do: "opacity-60 cursor-not-allowed", else: "hover:bg-amber-700/20")
+      if(selected?, do: "ring-2 ring-amber-400 bg-amber-700/30", else: nil),
+      if(disabled?, do: "opacity-60 cursor-not-allowed", else: "hover:bg-amber-700/20")
     ]
   end
 
