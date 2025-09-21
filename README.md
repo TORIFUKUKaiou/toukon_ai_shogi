@@ -2,11 +2,11 @@
 
 To start your Phoenix server:
 
-* Run `mix setup` to install and setup dependencies
+* Run `mix setup` to install dependencies and prepare the database (`mix ecto.create && mix ecto.migrate`)
 * Export `PHX_SECRET_KEY_BASE` (see `.envrc.example`) so dev config can boot
 * Start Phoenix endpoint with `mix phx.server` or inside IEx with `iex -S mix phx.server`
 
-Visit [`localhost:4000/board`](http://localhost:4000/board) to see the LiveView board prototype. The root path redirects there automatically.
+Visit [`localhost:4000/users/register`](http://localhost:4000/users/register) to create an account, then head to [`localhost:4000/lobby`](http://localhost:4000/lobby) to queue for multiplayer matches. A sandbox board remains available at [`localhost:4000/board`](http://localhost:4000/board).
 
 Ready to run in production? Please [check our deployment guides](https://hexdocs.pm/phoenix/deployment.html).
 

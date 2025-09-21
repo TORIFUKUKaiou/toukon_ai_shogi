@@ -7,6 +7,19 @@
 # General application configuration
 import Config
 
+config :toukon_ai_shogi, :scopes,
+  user: [
+    default: true,
+    module: ToukonAiShogi.Accounts.Scope,
+    assign_key: :current_scope,
+    access_path: [:user, :id],
+    schema_key: :user_id,
+    schema_type: :id,
+    schema_table: :users,
+    test_data_fixture: ToukonAiShogi.AccountsFixtures,
+    test_setup_helper: :register_and_log_in_user
+  ]
+
 config :toukon_ai_shogi,
   ecto_repos: [ToukonAiShogi.Repo],
   generators: [timestamp_type: :utc_datetime]

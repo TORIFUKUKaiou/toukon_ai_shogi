@@ -12,8 +12,11 @@ ToukonAiShogi.Game               # コンテキスト。初期化やステート
 ├── ToukonAiShogi.Game.State     # 対局全体を保持する構造体
 ├── ToukonAiShogi.Game.Board     # 盤面を表現する構造体
 ├── ToukonAiShogi.Game.Piece     # 駒の構造体定義
-└── ToukonAiShogi.Game.InitialSetup
+├── ToukonAiShogi.Game.InitialSetup
                                   # 初期盤面・初期ステート生成ヘルパー
+├── ToukonAiShogi.GameRooms       # 各対局ルームのプロセス管理（PubSub ブロードキャスト）
+├── ToukonAiShogi.GameRoom        # ルームごとの GenServer 実装
+└── ToukonAiShogi.GameSessions    # 対局結果の永続化（Ecto）
 ```
 
 ## State 構造体

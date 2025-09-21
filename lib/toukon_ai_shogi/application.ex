@@ -12,6 +12,10 @@ defmodule ToukonAiShogi.Application do
       ToukonAiShogi.Repo,
       {DNSCluster, query: Application.get_env(:toukon_ai_shogi, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: ToukonAiShogi.PubSub},
+      ToukonAiShogiWeb.Presence,
+      {Registry, keys: :unique, name: ToukonAiShogi.GameRoomRegistry},
+      {DynamicSupervisor, name: ToukonAiShogi.GameRoomSupervisor, strategy: :one_for_one},
+      ToukonAiShogi.Matchmaking,
       # Start a worker by calling: ToukonAiShogi.Worker.start_link(arg)
       # {ToukonAiShogi.Worker, arg},
       # Start to serve requests, typically the last entry
