@@ -14,6 +14,9 @@ config :swoosh, api_client: Swoosh.ApiClient.Req
 # Keep Swoosh Local Memory Storage enabled so we can reuse the dev mailbox in prod for now
 config :swoosh, local: true
 
+# Expose the mailbox preview routes in production to inspect emails
+config :toukon_ai_shogi, mailbox_routes: true
+
 # Do not print debug messages in production
 config :logger, level: :info
 
