@@ -32,31 +32,38 @@ defmodule ToukonAiShogiWeb.BoardComponents do
   def board(assigns) do
     ~H"""
     <div class="flex flex-col gap-2">
-      <div class="grid grid-cols-[repeat(9,_minmax(0,_1fr))_min-content] gap-1 text-xs font-semibold text-slate-200">
-        <%= for file <- file_sequence(@perspective) do %>
-          <span class="text-center">{Notation.file_label(file)}</span>
-        <% end %>
-        <span />
-      </div>
-      <div class="grid grid-cols-[repeat(9,_minmax(0,_1fr))_min-content] gap-[2px] bg-amber-800 p-[2px] shadow-lg">
-        <%= for rank <- rank_sequence(@perspective) do %>
-          <%= for file <- file_sequence(@perspective) do %>
-            <.board_square
-              coordinate={{file, rank}}
-              piece={Map.get(@board.squares, {file, rank})}
-              selected_square={@selected_square}
-              disabled={@disabled}
-              perspective={@perspective}
-            />
+      <table class="border-collapse text-xs font-semibold text-slate-200">
+        <thead>
+          <tr>
+            <%= for file <- file_sequence(@perspective) do %>
+              <th scope="col" class="h-8 w-16 text-center font-semibold text-slate-200">
+                {Notation.file_label(file)}
+              </th>
+            <% end %>
+            <th scope="col" class="w-10"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <%= for rank <- rank_sequence(@perspective) do %>
+            <tr>
+              <%= for file <- file_sequence(@perspective) do %>
+                <td class="border border-amber-500/70 bg-amber-100 p-0">
+                  <.board_square
+                    coordinate={{file, rank}}
+                    piece={Map.get(@board.squares, {file, rank})}
+                    selected_square={@selected_square}
+                    disabled={@disabled}
+                    perspective={@perspective}
+                  />
+                </td>
+              <% end %>
+              <th scope="row" class="w-10 bg-slate-900/70 text-center font-semibold text-slate-200">
+                {Notation.rank_label(rank)}
+              </th>
+            </tr>
           <% end %>
-          <span class="flex items-center justify-center bg-slate-900/70 px-1 text-xs font-semibold text-slate-200">
-            {Notation.rank_label(rank)}
-          </span>
-        <% end %>
-      </div>
-      <p class="text-xs text-slate-300 opacity-80">
-        駒をクリックして移動先を指定できます。成りが可能な場合は成／不成を選択してください。
-      </p>
+        </tbody>
+      </table>
     </div>
     """
   end
@@ -76,7 +83,7 @@ defmodule ToukonAiShogiWeb.BoardComponents do
       phx-value-file={elem(@coordinate, 0)}
       phx-value-rank={elem(@coordinate, 1)}
       class={[
-        "relative aspect-square bg-amber-200 transition",
+        "relative block h-16 w-16 bg-amber-200 transition",
         square_classes(@selected?, @disabled)
       ]}
       disabled={@disabled}
