@@ -2,6 +2,7 @@ services:
   nginx-proxy:
     image: nginxproxy/nginx-proxy
     container_name: nginx-proxy
+    restart: unless-stopped
     ports:
       - 80:80
       - 443:443
@@ -10,10 +11,13 @@ services:
       - vhost:/etc/nginx/vhost.d
       - html:/usr/share/nginx/html
       - /var/run/docker.sock:/tmp/docker.sock:ro
+    networks:
+      - web
 
   nginx-proxy-acme:
     image: nginxproxy/acme-companion
     container_name: nginx-proxy-acme
+    restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - acme:/etc/acme.sh
@@ -25,15 +29,16 @@ services:
       - NGINX_PROXY_CONTAINER=nginx-proxy
     depends_on:
       - nginx-proxy
+    networks:
+      - web
 
   elixir:
     build:
       context: .
       dockerfile: Dockerfile
-    # Runs app on the same network as the database container, allows "forwardPorts" in devcontainer.json function.
-    network_mode: service:db
+    restart: unless-stopped
     environment:
-      SECRET_KEY_BASE: 3IuAYS8yod5/tRAy+GmmAU+blS39HzgNpDbe+s685WWcCFKGDfD72W7bwpZAn31B
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE:?SECRET_KEY_BASE must be provided}
       DATABASE_URL: ecto://postgres:postgres@db/toukon_ai_shogi
       PHX_HOST: toukon-ai-shogi.autoracex.dev
       PHX_SERVER: true
@@ -43,9 +48,14 @@ services:
       LETSENCRYPT_EMAIL: torifuku.kaiou@gmail.com
     ports:
       - 4000:4000
+    depends_on:
+      - db
+    networks:
+      - web
+      - internal
 
   db:
-    image: postgres:latest
+    image: postgres:16-alpine
     restart: unless-stopped
     volumes:
       - postgres-data:/var/lib/postgresql/data
@@ -53,8 +63,8 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: toukon_ai_shogi
-    depends_on:
-      - nginx-proxy-acme
+    networks:
+      - internal
 
 volumes:
   certs:
@@ -62,3 +72,7 @@ volumes:
   html:
   acme:
   postgres-data:
+
+networks:
+  web:
+  internal:
