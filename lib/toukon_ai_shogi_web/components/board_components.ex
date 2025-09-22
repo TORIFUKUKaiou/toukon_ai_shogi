@@ -47,7 +47,7 @@ defmodule ToukonAiShogiWeb.BoardComponents do
           <%= for rank <- rank_sequence(@perspective) do %>
             <tr>
               <%= for file <- file_sequence(@perspective) do %>
-                <td class="border border-amber-500/70 bg-amber-100 p-0">
+                <td class="border border-[#a8643c] bg-[#7f4523] p-0">
                   <.board_square
                     coordinate={{file, rank}}
                     piece={Map.get(@board.squares, {file, rank})}
@@ -83,7 +83,7 @@ defmodule ToukonAiShogiWeb.BoardComponents do
       phx-value-file={elem(@coordinate, 0)}
       phx-value-rank={elem(@coordinate, 1)}
       class={[
-        "relative block h-16 w-16 bg-amber-200 transition",
+        "relative block h-16 w-16 bg-[#91502e] transition-colors hover:bg-[#a55d36]",
         square_classes(@selected?, @disabled)
       ]}
       disabled={@disabled}
@@ -114,8 +114,8 @@ defmodule ToukonAiShogiWeb.BoardComponents do
     """
   end
 
-  defp square_classes(true, true), do: "ring-4 ring-amber-300/80 opacity-60 cursor-not-allowed"
-  defp square_classes(true, false), do: "ring-4 ring-amber-400"
+  defp square_classes(true, true), do: "ring-4 ring-[#f7c281] opacity-60 cursor-not-allowed"
+  defp square_classes(true, false), do: "ring-4 ring-[#f4b267]"
   defp square_classes(false, true), do: "opacity-60 cursor-not-allowed"
   defp square_classes(false, false), do: ""
 
